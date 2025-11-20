@@ -1,17 +1,58 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle, XCircle, Clock, Eye, FileText } from 'lucide-react';
-import { useAdmission } from '../../context/AdmissionContext';
+// removed: import { useAdmission } from '../../context/AdmissionContext';
 import { Card, CardHeader, CardBody, Button, Modal } from '../../components/common';
 import { formatDate } from '../../utils/dateUtils';
 
 export const AdminApplicationsPage = () => {
   const navigate = useNavigate();
-  const { applications, updateApplicationStatus } = useAdmission();
+  // Backend URL (Vite env)
+  const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
+
+  // applications loaded from backend
+  const [applications, setApplications] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  // simple staff auth inputs (required to call admin endpoints)
+  const [staffId, setStaffId] = useState(localStorage.getItem('staffId') || '');
+  const [staffToken, setStaffToken] = useState(localStorage.getItem('staffToken') || '');
+
   const [filterStatus, setFilterStatus] = useState('all');
   const [selectedApp, setSelectedApp] = useState(null);
+  const [selectedAppDetails, setSelectedAppDetails] = useState(null); // {full application}
+  const [loadingDetails, setLoadingDetails] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewData, setReviewData] = useState({ status: 'approved', feedback: '' });
+
+  useEffect(() => {
+    localStorage.setItem('staffId', staffId);
+    localStorage.setItem('staffToken', staffToken);
+  }, [staffId, staffToken]);
+
+  const fetchApplications = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`${API_BASE}/api/applications`);
+      if (!res.ok) throw new Error(`Failed to load (${res.status})`);
+      const data = await res.json();
+      setApplications(data);
+    } catch (err) {
+      console.error(err);
+      setError(String(err.message || err));
+      setApplications([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchApplications();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const filteredApplications = useMemo(() => {
     return applications.filter((app) => {
@@ -20,14 +61,87 @@ export const AdminApplicationsPage = () => {
     });
   }, [applications, filterStatus]);
 
-  const handleUpdateStatus = () => {
-    if (selectedApp) {
-      updateApplicationStatus(selectedApp.id, reviewData.status, {
-        feedback: reviewData.feedback,
+  const fetchApplicationDetails = async (appId) => {
+    setLoadingDetails(true);
+    setSelectedAppDetails(null);
+    try {
+      const res = await fetch(`${API_BASE}/api/applications/${encodeURIComponent(appId)}`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || `Failed to load (${res.status})`);
+      }
+      const data = await res.json();
+      setSelectedAppDetails(data);
+      return data;
+    } catch (err) {
+      console.error('fetchApplicationDetails error', err);
+      alert('Failed to load application details: ' + (err.message || err));
+      return null;
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
+
+  // open review: fetch details then show modal
+  const openReview = async (application) => {
+    setSelectedApp(application);
+    const details = await fetchApplicationDetails(application.id);
+    if (details) {
+      // initialize decision to current application status so reviewer can change it
+      setReviewData({
+        status: details.applicationStatus || 'pending',
+        feedback: '',
       });
+      setShowReviewModal(true);
+    } else {
+      // clear selection if failed
+      setSelectedApp(null);
+      setSelectedAppDetails(null);
+    }
+  };
+
+  const handleUpdateStatus = async () => {
+    const appId = selectedAppDetails?.nationalId || selectedApp?.id;
+    if (!appId) return alert('No application selected');
+
+    // If staff credentials missing, prompt user to enter them (so reviewer can provide credentials inline)
+    if (!staffId) {
+      const s = window.prompt('Enter your Staff ID (required to submit):', '');
+      if (!s) return alert('Staff ID required to submit');
+      setStaffId(s);
+    }
+    if (!staffToken) {
+      const t = window.prompt('Enter your Staff Token (required to submit):', '');
+      if (!t) return alert('Staff Token required to submit');
+      setStaffToken(t);
+    }
+
+    setSubmitting(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/applications/${encodeURIComponent(appId)}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Staff-Id': localStorage.getItem('staffId') || staffId,
+          'X-Staff-Token': localStorage.getItem('staffToken') || staffToken,
+        },
+        body: JSON.stringify({ status: reviewData.status, note: reviewData.feedback }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(body.message || `Failed (${res.status})`);
+      }
+      alert('Status updated');
       setShowReviewModal(false);
       setSelectedApp(null);
+      setSelectedAppDetails(null);
       setReviewData({ status: 'approved', feedback: '' });
+      await fetchApplications();
+    } catch (err) {
+      console.error('handleUpdateStatus error', err);
+      alert('Update failed: ' + (err.message || err));
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -69,6 +183,32 @@ export const AdminApplicationsPage = () => {
           <h1 className="text-4xl font-bold text-secondary-900">Application Management</h1>
           <p className="text-secondary-600 mt-2">Review and manage admission applications</p>
         </div>
+
+        {/* Staff credentials */}
+        <Card className="mb-4">
+          <CardBody>
+            <div className="flex gap-2 items-center">
+              <input
+                placeholder="Staff ID"
+                value={staffId}
+                onChange={(e) => setStaffId(e.target.value)}
+                className="px-3 py-2 border rounded"
+              />
+              <input
+                placeholder="Staff Token"
+                value={staffToken}
+                onChange={(e) => setStaffToken(e.target.value)}
+                className="px-3 py-2 border rounded"
+                type="password"
+              />
+              <Button variant="outline" onClick={() => fetchApplications()}>
+                Refresh
+              </Button>
+              {loading && <div className="text-sm text-secondary-600 ml-3">Loading...</div>}
+              {error && <div className="text-sm text-red-600 ml-3">Error: {error}</div>}
+            </div>
+          </CardBody>
+        </Card>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <Card>
@@ -221,10 +361,7 @@ export const AdminApplicationsPage = () => {
                         <Button
                           variant="primary"
                           size="sm"
-                          onClick={() => {
-                            setSelectedApp(application);
-                            setShowReviewModal(true);
-                          }}
+                          onClick={() => openReview(application)}
                         >
                           Review
                         </Button>
@@ -247,14 +384,92 @@ export const AdminApplicationsPage = () => {
 
       <Modal
         isOpen={showReviewModal}
-        onClose={() => setShowReviewModal(false)}
-        title={`Review Application - ${selectedApp?.studentName}`}
+        onClose={() => { setShowReviewModal(false); setSelectedApp(null); setSelectedAppDetails(null); }}
+        title={`Review Application - ${selectedAppDetails?.studentName || selectedApp?.studentName || ''}`}
       >
         <div className="space-y-4">
-          <div>
-            <p className="text-sm font-semibold text-secondary-700 mb-2">Current Status</p>
-            <p className="text-secondary-800">{selectedApp?.applicationStatus}</p>
-          </div>
+          {/* Application details section */}
+          {loadingDetails ? (
+            <div className="py-6 text-center">Loading application details...</div>
+          ) : selectedAppDetails ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-4 border rounded">
+                <h4 className="font-semibold mb-2">Applicant Info</h4>
+                <p><strong>Name:</strong> {selectedAppDetails.studentName}</p>
+                <p><strong>Email:</strong> {selectedAppDetails.email || '—'}</p>
+                <p><strong>Phone:</strong> {selectedAppDetails.phoneNumber || '—'}</p>
+                <p><strong>National ID:</strong> {selectedAppDetails.nationalId || '—'}</p>
+                <p><strong>Age:</strong> {selectedAppDetails.age ?? '—'}</p>
+                <p><strong>Program:</strong> {selectedAppDetails.appliedProgram || '—'}</p>
+                <p><strong>GPA:</strong> {selectedAppDetails.gpa ?? '—'}</p>
+                <p><strong>Test Score:</strong> {selectedAppDetails.testScore ?? '—'}</p>
+                <p><strong>Submitted:</strong> {formatDate(selectedAppDetails.submittedAt)}</p>
+              </div>
+
+              <div className="p-4 border rounded">
+                <h4 className="font-semibold mb-2">Documents</h4>
+
+                <div className="mb-3">
+                  <p className="font-semibold">Selfie / Applicant Photo</p>
+                  {selectedAppDetails.selfiePhoto ? (
+                    typeof selectedAppDetails.selfiePhoto === 'string' ? (
+                      <img src={selectedAppDetails.selfiePhoto} alt="selfie" className="max-w-full rounded mb-2" />
+                    ) : <p className="text-sm">{selectedAppDetails.selfiePhoto.name || 'Uploaded file'}</p>
+                  ) : <p className="text-sm text-secondary-500">No selfie available</p>}
+                </div>
+
+                <div className="mb-3">
+                  <p className="font-semibold">ID Photo</p>
+                  {selectedAppDetails.idPhoto ? (
+                    typeof selectedAppDetails.idPhoto === 'string' ? (
+                      <img src={selectedAppDetails.idPhoto} alt="id" className="max-w-full rounded mb-2" />
+                    ) : <p className="text-sm">{selectedAppDetails.idPhoto.name || 'Uploaded file'}</p>
+                  ) : <p className="text-sm text-secondary-500">No ID photo available</p>}
+                </div>
+
+                <div>
+                  <p className="font-semibold mb-2">Certificates</p>
+                  <div className="grid grid-cols-1 gap-2">
+                    {(selectedAppDetails.certificates && selectedAppDetails.certificates.length > 0) ? (
+                      selectedAppDetails.certificates.map((c, i) => (
+                        <div key={i} className="p-2 border rounded">
+                          {c.url ? (
+                            <a href={c.url} target="_blank" rel="noreferrer" className="text-primary-600 underline">
+                              {c.originalName || c.filename || c.url.split('/').pop()}
+                            </a>
+                          ) : (
+                            <p className="text-sm">{c.originalName || c.filename || c.name || 'Uploaded file'}</p>
+                          )}
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-secondary-500">No certificates uploaded</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Activity logs if available */}
+              <div className="md:col-span-2 p-4 border rounded">
+                <h4 className="font-semibold mb-2">Activity Log</h4>
+                {(selectedAppDetails.activityLogs && selectedAppDetails.activityLogs.length > 0) ? (
+                  <ul className="space-y-2 text-sm">
+                    {selectedAppDetails.activityLogs.map((a, idx) => (
+                      <li key={idx} className="p-2 bg-gray-50 rounded">
+                        <div><strong>{a.staffId || a.staff || 'staff'}</strong> — <span className="text-secondary-600">{a.action}</span></div>
+                        <div className="text-xs text-secondary-600">{a.note || a.message || ''}</div>
+                        <div className="text-xs text-secondary-500">{new Date(a.timestamp || a.sentAt || a.date || Date.now()).toLocaleString()}</div>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-secondary-500">No activity recorded</p>
+                )}
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-secondary-500">No details to show</p>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-secondary-700 mb-2">Decision</label>
@@ -292,8 +507,9 @@ export const AdminApplicationsPage = () => {
               variant="primary"
               className="flex-1"
               onClick={handleUpdateStatus}
+              disabled={submitting}
             >
-              Submit Review
+              {submitting ? 'Submitting…' : 'Submit Review'}
             </Button>
           </div>
         </div>
