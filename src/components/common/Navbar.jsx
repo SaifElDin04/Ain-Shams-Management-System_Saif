@@ -49,7 +49,7 @@ export const Navbar = () => {
         <div className="flex justify-between items-center h-16">
           <Link to="/" className="flex items-center space-x-2 font-bold text-xl hover:text-primary-100 transition">
             <Home className="w-6 h-6" />
-            <span>UMS</span>
+            <span>ASMS</span>
           </Link>
 
           <div className="hidden md:flex space-x-1">

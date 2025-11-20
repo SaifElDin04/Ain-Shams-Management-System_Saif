@@ -11,13 +11,13 @@ export const HomePage = () => {
   const features = [
     {
       icon: <BookOpen className="w-8 h-8" />,
-      title: 'Course Management',
+      title: 'Learning System',
       description: 'Browse courses, access materials, and manage your enrollment',
     },
     {
       icon: <Award className="w-8 h-8" />,
-      title: 'Assignment & Grading',
-      description: 'Submit assignments and track your academic progress',
+      title: 'Road To Success',
+      description: 'Track your academic progress and achieve your goals',
     },
     {
       icon: <Users className="w-8 h-8" />,
@@ -45,7 +45,7 @@ export const HomePage = () => {
         <div className="grid md:grid-cols-2 gap-12 items-center">
           <div className="animate-slide-up">
             <h1 className="text-5xl font-bold text-secondary-900 mb-6 leading-tight">
-              Welcome to <span className="text-primary-600">University Management System</span>
+              Welcome to <span className="text-primary-600">Ain Shams Management System</span>
             </h1>
             <p className="text-xl text-secondary-600 mb-8">
               A comprehensive platform for streamlining administrative and academic processes. Manage your studies, applications, and stay connected with your university community.
