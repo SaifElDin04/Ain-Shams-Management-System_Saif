@@ -51,7 +51,16 @@ const upload = multer({
 });
 
 const app = express();
+<<<<<<< HEAD
 app.use(cors());
+=======
+app.use(cors({
+  origin: (origin, cb) => cb(null, true), // allow all origins; replace with specific origin in production
+  credentials: true,
+  exposedHeaders: ['Content-Disposition', 'X-Total-Count'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Staff-Id', 'X-Staff-Token', 'X-Requested-With'],
+}));
+>>>>>>> 99749da4f337fe38c463f12c1c119177a2958084
 app.use(express.json());
 app.use('/uploads', express.static(UPLOAD_DIR));
 
@@ -184,6 +193,21 @@ app.get('/api/applications/search', async (req, res) => {
   }
 });
 
+<<<<<<< HEAD
+=======
+// simple staff auth middleware: requires X-Staff-Id and matching token (if set)
+function requireStaff(req, res, next) {
+  const staffId = req.headers['x-staff-id'];
+  const token = req.headers['x-staff-token'] || req.headers.authorization;
+  if (!staffId) return res.status(401).json({ message: 'Missing X-Staff-Id header' });
+  if (process.env.STAFF_TOKEN) {
+    if (!token || token !== process.env.STAFF_TOKEN) return res.status(401).json({ message: 'Invalid staff token' });
+  }
+  req.staffId = staffId;
+  return next();
+}
+
+>>>>>>> 99749da4f337fe38c463f12c1c119177a2958084
 // Health endpoint
 app.get('/api/health', (req, res) => {
   res.json({
@@ -297,6 +321,117 @@ app.post(
   }
 );
 
+<<<<<<< HEAD
+=======
+// Admin: update application status and record activity log + notify applicant
+app.put('/api/applications/:id/status', requireStaff, async (req, res) => {
+  try {
+    const id = req.params.id;
+    const { status, note } = req.body || {};
+    if (!status) return res.status(400).json({ message: 'status is required' });
+
+    const activity = {
+      staffId: req.staffId,
+      action: `status:${status}`,
+      note: note || '',
+      timestamp: new Date().toISOString(),
+    };
+
+    if (mongoConnected) {
+      // find by nationalId or by _id fallback
+      const isNationalId = /^\d{16}$/.test(id);
+      const query = isNationalId ? { nationalId: id } : { _id: id };
+      const appDoc = await Application.findOne(query);
+      if (!appDoc) return res.status(404).json({ message: 'Not found' });
+
+      appDoc.applicationStatus = status;
+      appDoc.activityLogs = appDoc.activityLogs || [];
+      appDoc.activityLogs.push(activity);
+
+      // add a notification record
+      const message = `Your application status has been updated to: ${status}`;
+      appDoc.notifications = appDoc.notifications || [];
+      appDoc.notifications.push({ type: 'status-update', message, sentAt: new Date(), delivered: false });
+
+      await appDoc.save();
+
+      // Simulate sending notification (console). In production integrate email/SMS.
+      console.log(`[notify] to ${appDoc.email || appDoc.nationalId}: ${message}`);
+
+      return res.json({ ...appDoc.toObject(), id: appDoc.nationalId });
+    }
+
+    // fallback: in-memory
+    const found = inMemoryApps.find(a => a.nationalId === id || a.id === id);
+    if (!found) return res.status(404).json({ message: 'Not found' });
+    found.applicationStatus = status;
+    found.activityLogs = found.activityLogs || [];
+    found.activityLogs.push(activity);
+    // store notification in memory
+    found.notifications = found.notifications || [];
+    const message = `Your application status has been updated to: ${status}`;
+    found.notifications.push({ type: 'status-update', message, sentAt: new Date().toISOString(), delivered: false });
+    console.log(`[notify-fallback] to ${found.email || found.nationalId}: ${message}`);
+
+    return res.json(found);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: 'Failed to update status', error: err.message });
+  }
+});
+
+// Admin: fetch activity logs
+app.get('/api/applications/:id/activity', requireStaff, async (req, res) => {
+  try {
+    const id = req.params.id;
+    if (mongoConnected) {
+      const isNationalId = /^\d{16}$/.test(id);
+      const query = isNationalId ? { nationalId: id } : { _id: id };
+      const appDoc = await Application.findOne(query).lean();
+      if (!appDoc) return res.status(404).json({ message: 'Not found' });
+      return res.json({ activityLogs: appDoc.activityLogs || [] });
+    }
+    const found = inMemoryApps.find(a => a.nationalId === id || a.id === id);
+    if (!found) return res.status(404).json({ message: 'Not found' });
+    return res.json({ activityLogs: found.activityLogs || [] });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ message: 'Failed to fetch activity logs', error: err.message });
+  }
+});
+
+// --- flexible loader for ainshamsmanagementsystem auth module ---
+// If a folder c:\... \ainshamsmanagementsystem exists and exports a router/function, mount it.
+const authModulePath = path.join(__dirname, 'ainshamsmanagementsystem');
+if (fs.existsSync(authModulePath)) {
+  try {
+    const authExport = require(authModulePath);
+    if (typeof authExport === 'function') {
+      // module expects (app) or returns a router
+      const maybeRouter = authExport(app);
+      if (maybeRouter && typeof maybeRouter === 'function') {
+        app.use('/auth', maybeRouter);
+        console.log('Mounted ainshamsmanagementsystem router returned from function at /auth');
+      } else {
+        console.log('Initialized ainshamsmanagementsystem via function export');
+      }
+    } else if (authExport && authExport.router) {
+      app.use('/auth', authExport.router);
+      console.log('Mounted ainshamsmanagementsystem.router at /auth');
+    } else {
+      // assume the module itself is a router
+      app.use('/auth', authExport);
+      console.log('Mounted ainshamsmanagementsystem module at /auth');
+    }
+  } catch (err) {
+    console.error('Failed to load ainshamsmanagementsystem module:', err);
+    console.log('Proceeding without mounting external auth module; verify module.exports in that folder.');
+  }
+} else {
+  console.log('No ainshamsmanagementsystem folder found — skipping auth module mount.');
+}
+
+>>>>>>> 99749da4f337fe38c463f12c1c119177a2958084
 app.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT}`);
 });
