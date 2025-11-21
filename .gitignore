@@ -38,6 +38,12 @@ Thumbs.db
 # Server uploads and generated files
 /server/uploads/
 
+# Testing helpers and results (local scripts)
+scripts/test*.js
+scripts/test*.cjs
+scripts/test*.mjs
+test-results/
+
 # Local DB files and caches
 *.db
 *.sqlite
