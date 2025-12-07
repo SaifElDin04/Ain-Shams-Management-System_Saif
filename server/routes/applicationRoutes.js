@@ -2,7 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const applicationController = require('../controllers/applicationController');
-const { authenticate, authorizeRole } = require('../middleware/authMiddleware');
+const { optionalAuthenticate, rejectIfAuthenticated, authenticate, authorizeRole } = require('../middleware/authMiddleware');
 
 // Set up Multer for file uploads (same as before)
 const UPLOAD_DIR = path.join(__dirname, '..', 'uploads');
@@ -40,11 +40,17 @@ router.use((req, res, next) => {
 // Health endpoint should be before the parameterized `/:id` route to avoid
 // treating 'health' as an ObjectId (which causes CastError).
 router.get('/health', applicationController.health);
-router.get('/', applicationController.getAllApplications);
-router.get('/search', applicationController.searchByNationalId);
-router.get('/:id', applicationController.getApplicationById);
+
+// only admins can list all applications
+router.get('/', authenticate, authorizeRole(['admin']), applicationController.getAllApplications);
+// search: allow admin or require matching email (ownership) when searching by nationalId
+router.get('/search', optionalAuthenticate, applicationController.searchByNationalId);
+// get by id: allow optional auth (admins will be recognized); non-admins must prove ownership in controller
+router.get('/:id', optionalAuthenticate, applicationController.getApplicationById);
+
 router.post(
   '/',
+  rejectIfAuthenticated,
   upload.fields([
     { name: 'idPhoto', maxCount: 1 },
     { name: 'selfiePhoto', maxCount: 1 },
