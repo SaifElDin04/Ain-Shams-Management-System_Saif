@@ -1,8 +1,9 @@
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
-const applicationController = require('../controllers/applicationController');
-const { optionalAuthenticate, rejectIfAuthenticated, authenticate, authorizeRole } = require('../middleware/authMiddleware');
+// Switch to SQL-based controller; legacy Mongo controller kept for reference
+const applicationController = require('../controllers-sql/applicationController');
+const { authenticate, authorizeRole } = require('../middleware/authMiddleware');
 
 // Set up Multer for file uploads (same as before)
 const UPLOAD_DIR = path.join(__dirname, '..', 'uploads');
@@ -30,15 +31,9 @@ const upload = multer({
 
 const router = express.Router();
 
-// Attach mongo status to req for controller logic
-router.use((req, res, next) => {
-  req.mongoConnected = req.app.get('mongoConnected');
-  req.mongoFailed = req.app.get('mongoFailed');
-  next();
-});
+// No longer use Mongo flags; health endpoint provided by SQL controller
 
-// Health endpoint should be before the parameterized `/:id` route to avoid
-// treating 'health' as an ObjectId (which causes CastError).
+// Health endpoint
 router.get('/health', applicationController.health);
 
 // only admins can list all applications
@@ -60,7 +55,7 @@ router.post(
 );
 // require authenticated user and either admin role or admissions staff (staffType === 'admissions')
 // Note: we remove the broad 'staff' role from this check so only staff with staffType 'admissions' are allowed.
-router.put('/:id/status', authenticate, authorizeRole(['admin','admissions']), applicationController.updateApplicationStatus);
-router.get('/:id/activity', authenticate, authorizeRole(['admin','admissions']), applicationController.getActivityLogs);
+router.put('/applications/:id/status', authenticate, authorizeRole(['admin','admissions']), applicationController.updateApplicationStatus);
+router.get('/applications/:id/activity', authenticate, authorizeRole(['admin','admissions']), applicationController.getActivityLogs);
 
 module.exports = router;
