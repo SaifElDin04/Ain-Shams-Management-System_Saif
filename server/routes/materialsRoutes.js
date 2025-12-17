@@ -1,3 +1,10 @@
+const express = require('express');
+const { body, param } = require('express-validator');
+const materialsController = require('../controllers-sql/materialsController');
+const validateRequest = require('../middleware/validateRequest');
+
+const router = express.Router();
+
 // Upload validation (required: title, type, fileUrl)
 const uploadValidators = [
   body('title').isString().trim().notEmpty().withMessage('Title required'),
