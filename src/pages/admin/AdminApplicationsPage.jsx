@@ -15,9 +15,12 @@ export const AdminApplicationsPage = () => {
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  // optional staff credentials for manual token testing
+  const [staffId, setStaffId] = useState('');
+  const [staffToken, setStaffToken] = useState('');
 
   // authentication (access token provided by AuthContext)
-  const { authToken, user, isAuthenticated } = useAuth();
+  const { authToken, user, isAuthenticated, logout } = useAuth();
 
   const [filterStatus, setFilterStatus] = useState('all');
   const [selectedApp, setSelectedApp] = useState(null);
@@ -33,7 +36,15 @@ export const AdminApplicationsPage = () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/api/applications`);
+      // Ensure authToken is available before making the request if authentication is mandatory
+      if (!authToken) {
+        // Handle the case where authToken is missing (e.g., redirect to login)
+        throw new Error("Authentication token is missing. Please log in.");
+      }
+
+      const res = await fetch(`${API_BASE}/api/applications`, {
+        headers: { Authorization: `Bearer ${authToken}` }, // authToken is guaranteed to be present here
+      });
       if (!res.ok) throw new Error(`Failed to load (${res.status})`);
       const data = await res.json();
       setApplications(data);
@@ -41,6 +52,12 @@ export const AdminApplicationsPage = () => {
       console.error(err);
       setError(String(err.message || err));
       setApplications([]);
+      // Optionally, if the error is a 401 specifically, you might want to log out the user
+      // or redirect them to a login page.
+      if (err.message.includes('401')) {
+        logout();
+        navigate('/login');
+      }
     } finally {
       setLoading(false);
     }
@@ -62,7 +79,9 @@ export const AdminApplicationsPage = () => {
     setLoadingDetails(true);
     setSelectedAppDetails(null);
     try {
-      const res = await fetch(`${API_BASE}/api/applications/${encodeURIComponent(appId)}`);
+      const res = await fetch(`${API_BASE}/api/applications/${encodeURIComponent(appId)}`, {
+        headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+      });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.message || `Failed to load (${res.status})`);

@@ -27,7 +27,7 @@ export const AuthProvider = ({ children }) => {
         const body = await res.json();
         console.log('AuthContext: health response', body);
         if (!cancelled) {
-          const online = !!body.mongoConnected;
+          const online = (body.mode === 'sql') || !!body.mongoConnected;
           setBackendOnline(online);
           // when backend is online, stop using localStorage for token persistence
           setUseLocalStorage(!online);
