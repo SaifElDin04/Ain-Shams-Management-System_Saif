@@ -4,6 +4,7 @@ const { authenticate, authorizeRole, optionalAuthenticate } = require('../middle
 
 // Switch to SQL-based controller; legacy Mongo controller kept for reference
 const courseController = require('../controllers-sql/courseController');
+const assignmentController = require('../controllers-sql/assignmentController');
 const validateRequest = require('../middleware/validateRequest');
 
 const router = express.Router();
@@ -53,6 +54,37 @@ router.post('/courses/:courseId/enroll', authenticate, authorizeRole('student'),
 router.post('/courses/:courseId/unenroll', authenticate, authorizeRole('student'), [param('courseId').isInt(), body('studentId').isInt()], validateRequest, courseController.unenrollStudent);
 
 router.get('/courses/enrolled/:studentId', authenticate, param('studentId').isInt(), validateRequest, courseController.getEnrolledCourses);
+
+// ASSIGNMENTS
+router.get('/assignments', assignmentController.listAssignments);
+router.post('/assignments', [
+  body('courseId').isInt(),
+  body('title').isString().trim().notEmpty(),
+  body('description').optional().isString(),
+  body('dueDate').isISO8601(),
+  body('totalPoints').isInt({ min: 1 }),
+], validateRequest, assignmentController.createAssignment);
+
+router.get('/assignments/:assignmentId', param('assignmentId').isInt(), validateRequest, assignmentController.getAssignmentById);
+
+router.patch('/assignments/:assignmentId', [
+  param('assignmentId').isInt(),
+  body('title').optional().isString().trim(),
+  body('description').optional().isString(),
+  body('dueDate').optional().isISO8601(),
+  body('totalPoints').optional().isInt({ min: 1 }),
+], validateRequest, assignmentController.updateAssignment);
+
+router.delete('/assignments/:assignmentId', param('assignmentId').isInt(), validateRequest, assignmentController.deleteAssignment);
+
+router.post('/assignments/:assignmentId/submit', [param('assignmentId').isInt(), body('studentId').isInt()], validateRequest, assignmentController.submitAssignment);
+
+router.post('/assignments/:assignmentId/grade', [
+  param('assignmentId').isInt(),
+  body('studentId').isInt(),
+  body('points').isFloat({ min: 0 }),
+  body('feedback').optional().isString(),
+], validateRequest, assignmentController.gradeAssignment);
 
 // ============================================================================
 // COURSE METADATA ROUTES (EAV via SQL view) can be added later if required
