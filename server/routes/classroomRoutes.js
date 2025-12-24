@@ -1,6 +1,5 @@
 const express = require('express');
-const { body, param, query } = require('express-validator');
-const { authenticate, optionalAuthenticate } = require('../middleware/authMiddleware');
+const { param, query } = require('express-validator');
 
 const classroomController = require('../controllers-sql/classroomController');
 const validateRequest = require('../middleware/validateRequest');
@@ -8,17 +7,17 @@ const validateRequest = require('../middleware/validateRequest');
 const router = express.Router();
 
 // List all classrooms
-router.get('/classrooms', [
+router.get('/', [
   query('building').optional().isString(),
   query('roomType').optional().isIn(['classroom', 'laboratory', 'lecture_hall', 'seminar_room', 'computer_lab', 'science_lab']),
   query('isActive').optional().isBoolean(),
 ], validateRequest, classroomController.listClassrooms);
 
 // Get classroom by ID
-router.get('/classrooms/:classroomId', [param('classroomId').isInt()], validateRequest, classroomController.getClassroomById);
+router.get('/:classroomId', [param('classroomId').isInt()], validateRequest, classroomController.getClassroomById);
 
 // Get classroom availability
-router.get('/classrooms/availability', [
+router.get('/availability', [
   query('classroomId').optional().isInt(),
   query('startTime').isISO8601(),
   query('endTime').isISO8601(),
@@ -26,13 +25,11 @@ router.get('/classrooms/availability', [
 ], validateRequest, classroomController.getClassroomAvailability);
 
 // Get classroom schedule
-router.get('/classrooms/:classroomId/schedule', [
+router.get('/:classroomId/schedule', [
   param('classroomId').isInt(),
   query('startDate').optional().isISO8601(),
   query('endDate').optional().isISO8601(),
 ], validateRequest, classroomController.getClassroomSchedule);
-
-
 
 module.exports = router;
 
