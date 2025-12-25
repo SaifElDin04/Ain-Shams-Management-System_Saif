@@ -24,6 +24,9 @@ import { AnnouncementsPage } from './pages/community/AnnouncementsPage';
 import { AdminApplicationsPage } from './pages/admin/AdminApplicationsPage';
 import { AdminCoursesPage } from './pages/admin/AdminCoursesPage';
 
+import { MessagesPage } from './pages/messages/MessagesPage';
+import { EnhancedAnnouncementsPage } from './pages/community/EnhancedAnnouncementsPage';
+
 export const App = () => {
   return (
     <Router>
