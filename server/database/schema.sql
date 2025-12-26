@@ -42,6 +42,27 @@ CREATE INDEX idx_resources_owner_id ON resources(owner_id);
 -- Partial unique index to allow multiple empty asset_tag values but ensure uniqueness when set
 CREATE UNIQUE INDEX IF NOT EXISTS ux_resources_asset_tag ON resources(asset_tag) WHERE asset_tag <> '';
 
+-- TABLE: resource_allocations
+CREATE TABLE IF NOT EXISTS resource_allocations (
+  id SERIAL PRIMARY KEY,
+  resource_id INTEGER NOT NULL REFERENCES resources(id) ON DELETE CASCADE,
+  allocated_to_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  allocated_to_department VARCHAR(100) NOT NULL DEFAULT '',
+  allocated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  allocated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  due_back TIMESTAMP,
+  returned_at TIMESTAMP,
+  status VARCHAR(50) NOT NULL DEFAULT 'allocated' CHECK (status IN ('allocated','returned','overdue','maintenance','lost')),
+  notes TEXT NOT NULL DEFAULT '',
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_resource_allocations_resource_id ON resource_allocations(resource_id);
+CREATE INDEX IF NOT EXISTS idx_resource_allocations_allocated_to_user_id ON resource_allocations(allocated_to_user_id);
+CREATE INDEX IF NOT EXISTS idx_resource_allocations_allocated_by ON resource_allocations(allocated_by);
+
 
 -- TABLE: users (single role per user)
 CREATE TABLE users (
