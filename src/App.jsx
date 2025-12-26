@@ -1,30 +1,35 @@
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+
 import { AuthProvider } from './context/AuthContext';
 import { CurriculumProvider } from './context/CurriculumContext';
 import { AdmissionProvider } from './context/AdmissionContext';
 import { AnnouncementProvider } from './context/AnnouncementContext';
+
 import { Navbar } from './components/common';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 
+// Public pages (NAMED exports)
 import { HomePage } from './pages/HomePage';
 import { LoginPage } from './pages/auth/LoginPage';
 import { SignupPage } from './pages/auth/SignupPage';
-import { DashboardPage } from './pages/DashboardPage';
 
+// User pages (NAMED exports)
+import { DashboardPage } from './pages/DashboardPage';
 import { CoursesPage } from './pages/curriculum/CoursesPage';
 import { CourseDetailPage } from './pages/curriculum/CourseDetailPage';
 import { AssignmentsPage } from './pages/curriculum/AssignmentsPage';
 import { GradesPage } from './pages/curriculum/GradesPage';
-
 import { AdmissionPage } from './pages/admission/AdmissionPage';
 
-import { AnnouncementsPage } from './pages/community/AnnouncementsPage';
-
+// Admin pages (NAMED exports ✅)
 import { AdminApplicationsPage } from './pages/admin/AdminApplicationsPage';
 import { AdminCoursesPage } from './pages/admin/AdminCoursesPage';
 
-export const App = () => {
+// Community pages (DEFAULT exports ✅)
+import MessagesPage from './pages/messages/MessagesPage';
+import EnhancedAnnouncementsPage from './pages/community/EnhancedAnnouncementsPage';
+
+function App() {
   return (
     <Router>
       <AuthProvider>
@@ -33,11 +38,14 @@ export const App = () => {
             <AnnouncementProvider>
               <div className="min-h-screen bg-gray-50">
                 <Navbar />
+
                 <Routes>
+                  {/* Public */}
                   <Route path="/" element={<HomePage />} />
                   <Route path="/login" element={<LoginPage />} />
                   <Route path="/signup" element={<SignupPage />} />
 
+                  {/* User (protected) */}
                   <Route
                     path="/dashboard"
                     element={
@@ -83,10 +91,15 @@ export const App = () => {
                     }
                   />
 
+                  <Route path="/admission" element={<AdmissionPage />} />
+
+                  {/* Community */}
                   <Route
-                    path="/admission"
+                    path="/messages"
                     element={
-                        <AdmissionPage />
+                      <ProtectedRoute>
+                        <MessagesPage />
+                      </ProtectedRoute>
                     }
                   />
 
@@ -94,11 +107,12 @@ export const App = () => {
                     path="/announcements"
                     element={
                       <ProtectedRoute>
-                        <AnnouncementsPage />
+                        <EnhancedAnnouncementsPage />
                       </ProtectedRoute>
                     }
                   />
 
+                  {/* Admin */}
                   <Route
                     path="/admin/applications"
                     element={
@@ -117,6 +131,7 @@ export const App = () => {
                     }
                   />
 
+                  {/* Catch-all (MUST be last) */}
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </div>
@@ -126,6 +141,6 @@ export const App = () => {
       </AuthProvider>
     </Router>
   );
-};
+}
 
 export default App;
