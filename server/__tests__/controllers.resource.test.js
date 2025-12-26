@@ -1,9 +1,9 @@
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '..', '.env') });
-const db = require('../db/sql');
-const rtc = require('../controllers-sql/resourceTypeController');
-const rc = require('../controllers-sql/resourceController');
-const rac = require('../controllers-sql/resourceAllocationController');
+let db;
+let rtc;
+let rc;
+let rac;
 
 function makeMockReq(body = {}, params = {}, query = {}) {
   return { body, params, query, headers: {} };
@@ -32,10 +32,16 @@ describe('Resource controllers (integration)', () => {
 
   beforeAll(async () => {
     // Ensure DB connection and apply test schema
-    await db.query('SELECT 1');
-    // Apply test schema into `test` schema for isolation
+    // set TEST_SCHEMA so the DB pool sets search_path to the test schema for all connections
+    process.env.TEST_SCHEMA = 'test';
     const { execSync } = require('child_process');
     execSync('node server/scripts/apply-schema-test.js', { stdio: 'inherit' });
+    // require DB and controllers after TEST_SCHEMA is set so pool clients use the test schema
+    db = require('../db/sql');
+    rtc = require('../controllers-sql/resourceTypeController');
+    rc = require('../controllers-sql/resourceController');
+    rac = require('../controllers-sql/resourceAllocationController');
+    await db.query('SELECT 1');
   });
 
   afterAll(async () => {
