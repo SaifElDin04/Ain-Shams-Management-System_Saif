@@ -35,6 +35,29 @@ async function main() {
   console.log('Applying schema.sql ...');
   await pool.query(sql);
   console.log('Schema applied successfully.');
+
+  // Seed initial resource types if table exists and is empty
+  const hasResourceTypes = await exists('resource_types');
+  if (hasResourceTypes) {
+    const cntRes = await pool.query('SELECT COUNT(1) as c FROM resource_types');
+    const count = parseInt(cntRes.rows[0].c, 10);
+    if (count === 0) {
+      console.log('Seeding resource_types lookup table...');
+      const seedSql = `
+        INSERT INTO resource_types (name, description) VALUES
+          ('Laptop', 'Portable computers for students and faculty'),
+          ('Projector', 'Classroom projectors and mounts'),
+          ('Software License', 'Licensed software subscriptions'),
+          ('Lab Equipment', 'Specialized laboratory equipment'),
+          ('Tablet', 'Portable tablets for field and classroom use')
+        ON CONFLICT (name) DO NOTHING;
+      `;
+      await pool.query(seedSql);
+      console.log('resource_types seeded.');
+    } else {
+      console.log('resource_types already contains entries; skipping seed.');
+    }
+  }
 }
 
 main().catch((err) => {

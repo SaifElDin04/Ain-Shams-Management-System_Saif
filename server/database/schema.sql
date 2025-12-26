@@ -11,6 +11,15 @@ CREATE TABLE roles (
 
 INSERT INTO roles (name) VALUES ('student'), ('admin'), ('staff'), ('parent');
 
+-- TABLE: resource_types (lookup table for equipment/licenses/etc.)
+CREATE TABLE resource_types (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(100) NOT NULL UNIQUE,
+  description TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+
 -- TABLE: users (single role per user)
 CREATE TABLE users (
   id SERIAL PRIMARY KEY,
