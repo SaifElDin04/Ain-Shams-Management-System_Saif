@@ -7,6 +7,7 @@ const courseController = require('../controllers-sql/courseController');
 const validateRequest = require('../middleware/validateRequest');
 
 const router = express.Router();
+const materialsRoutes = require('./materialsRoutes');
 
 const createCourseValidators = [
   body('code').isString().trim().notEmpty(),
@@ -53,6 +54,8 @@ router.post('/courses/:courseId/enroll', authenticate, authorizeRole('student'),
 router.post('/courses/:courseId/unenroll', authenticate, authorizeRole('student'), [param('courseId').isInt(), body('studentId').isInt()], validateRequest, courseController.unenrollStudent);
 
 router.get('/courses/enrolled/:studentId', authenticate, param('studentId').isInt(), validateRequest, courseController.getEnrolledCourses);
+
+router.use('/courses/:courseId', materialsRoutes);
 
 // ============================================================================
 // COURSE METADATA ROUTES (EAV via SQL view) can be added later if required
