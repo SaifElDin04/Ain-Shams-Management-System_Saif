@@ -11,6 +11,59 @@ CREATE TABLE roles (
 
 INSERT INTO roles (name) VALUES ('student'), ('admin'), ('staff'), ('parent');
 
+-- TABLE: resource_types (lookup table for equipment/licenses/etc.)
+CREATE TABLE resource_types (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(100) NOT NULL UNIQUE,
+  description TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- TABLE: resources (core resource records compatible with EAV)
+
+CREATE TABLE resources (
+  id SERIAL PRIMARY KEY,
+  resource_type_id INTEGER REFERENCES resource_types(id) ON DELETE SET NULL,
+  name VARCHAR(255) NOT NULL,
+  asset_tag VARCHAR(100) NOT NULL DEFAULT '',
+  serial_number VARCHAR(100) NOT NULL DEFAULT '',
+  owner_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  department VARCHAR(100) NOT NULL DEFAULT '',
+  status VARCHAR(50) NOT NULL DEFAULT 'available' CHECK (status IN ('available','allocated','maintenance','retired')),
+  location VARCHAR(255) NOT NULL DEFAULT '',
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+  -- asset_tag uniqueness enforced by a partial unique index created below
+);
+
+CREATE INDEX idx_resources_type_id ON resources(resource_type_id);
+CREATE INDEX idx_resources_owner_id ON resources(owner_id);
+-- Partial unique index to allow multiple empty asset_tag values but ensure uniqueness when set
+CREATE UNIQUE INDEX IF NOT EXISTS ux_resources_asset_tag ON resources(asset_tag) WHERE asset_tag <> '';
+
+-- TABLE: resource_allocations
+CREATE TABLE IF NOT EXISTS resource_allocations (
+  id SERIAL PRIMARY KEY,
+  resource_id INTEGER NOT NULL REFERENCES resources(id) ON DELETE CASCADE,
+  allocated_to_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  allocated_to_department VARCHAR(100) NOT NULL DEFAULT '',
+  allocated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  allocated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  due_back TIMESTAMP,
+  returned_at TIMESTAMP,
+  status VARCHAR(50) NOT NULL DEFAULT 'allocated' CHECK (status IN ('allocated','returned','overdue','maintenance','lost')),
+  notes TEXT NOT NULL DEFAULT '',
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_resource_allocations_resource_id ON resource_allocations(resource_id);
+CREATE INDEX IF NOT EXISTS idx_resource_allocations_allocated_to_user_id ON resource_allocations(allocated_to_user_id);
+CREATE INDEX IF NOT EXISTS idx_resource_allocations_allocated_by ON resource_allocations(allocated_by);
+
+
 -- TABLE: users (single role per user)
 CREATE TABLE users (
   id SERIAL PRIMARY KEY,
@@ -318,6 +371,15 @@ INSERT INTO eav_attributes (entity_type, attribute_name, data_type, is_searchabl
   ('application', 'custom_field_1', 'string', FALSE),
   ('lms_integration', 'canvas_api_key', 'string', FALSE),
   ('lms_integration', 'blackboard_config', 'json', FALSE);
+
+-- Resource-specific EAV attributes
+-- Resource-specific EAV attributes (idempotent)
+INSERT INTO eav_attributes (entity_type, attribute_name, data_type, is_searchable)
+  VALUES
+    ('resource', 'isSoftware', 'boolean', FALSE),
+    ('resource', 'purchaseDate', 'datetime', FALSE),
+    ('resource', 'warrantyUntil', 'datetime', FALSE)
+  ON CONFLICT (entity_type, attribute_name) DO NOTHING;
 
 CREATE TABLE eav_values (
   id SERIAL PRIMARY KEY,

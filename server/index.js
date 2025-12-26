@@ -20,6 +20,8 @@ const quizRoutes = require('./routes/quizRoutes');
 const parentRoutes = require('./routes/parentRoutes');
 const maintenanceRoutes = require('./routes/maintenanceRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
+const resourceRoutes = require('./routes/resourceRoutes');
+const allocationRoutes = require('./routes/allocationRoutes');
 
 const PORT = process.env.PORT || 4000;
 // Legacy Mongo URI retained for rollback; not used in SQL mode
@@ -53,6 +55,8 @@ app.use('/api/quizzes', quizRoutes);
 app.use('/api/parents', parentRoutes);
 app.use('/api/maintenance', maintenanceRoutes);
 app.use('/api/bookings', bookingRoutes);
+app.use('/api/resources', resourceRoutes);
+app.use('/api/allocations', allocationRoutes);
 app.get('/', (req, res) => res.send('API running'));
 
 app.listen(PORT, () => {
