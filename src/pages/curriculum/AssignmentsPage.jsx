@@ -1,22 +1,39 @@
-import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { FileText, Calendar, BookOpen, CheckCircle, AlertCircle } from 'lucide-react';
 import { useCurriculum } from '../../context/CurriculumContext';
-import { Card, CardBody, Button } from '../../components/common';
+import { Card, CardBody, Button, FormSelect } from '../../components/common';
 import { formatDate, daysUntil, isDatePast } from '../../utils/dateUtils';
 
 export const AssignmentsPage = () => {
   const navigate = useNavigate();
-  const { assignments } = useCurriculum();
+  const { assignments, courses } = useCurriculum();
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  const courseIdFromUrl = searchParams.get('courseId');
+  const [filterCourseId, setFilterCourseId] = useState(courseIdFromUrl || 'all');
   const [filterStatus, setFilterStatus] = useState('all');
+
+  const courseOptions = useMemo(() => {
+    const base = [{ label: 'All Courses', value: 'all' }];
+    return base.concat(
+      courses.map((c) => ({ 
+        label: `${c.code || ''} ${c.name || ''}`.trim() || `Course ${c.id}`, 
+        value: String(c.id) 
+      }))
+    );
+  }, [courses]);
 
   const filteredAssignments = useMemo(() => {
     return assignments.filter((assignment) => {
+      if (filterCourseId !== 'all' && String(assignment.courseId) !== String(filterCourseId)) {
+        return false;
+      }
       if (filterStatus === 'submitted') return assignment.submitted;
       if (filterStatus === 'pending') return !assignment.submitted;
       return true;
     });
-  }, [assignments, filterStatus]);
+  }, [assignments, filterStatus, filterCourseId]);
 
   const sortedAssignments = useMemo(() => {
     return [...filteredAssignments].sort(
@@ -24,14 +41,20 @@ export const AssignmentsPage = () => {
     );
   }, [filteredAssignments]);
 
+  useEffect(() => {
+    if (courseIdFromUrl && courseIdFromUrl !== 'all') {
+      setFilterCourseId(courseIdFromUrl);
+    }
+  }, [courseIdFromUrl]);
+
   const stats = useMemo(() => {
     return {
-      total: assignments.length,
-      submitted: assignments.filter((a) => a.submitted).length,
-      pending: assignments.filter((a) => !a.submitted).length,
-      overdue: assignments.filter((a) => !a.submitted && isDatePast(a.dueDate)).length,
+      total: filteredAssignments.length,
+      submitted: filteredAssignments.filter((a) => a.submitted).length,
+      pending: filteredAssignments.filter((a) => !a.submitted).length,
+      overdue: filteredAssignments.filter((a) => !a.submitted && isDatePast(a.dueDate)).length,
     };
-  }, [assignments]);
+  }, [filteredAssignments]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -85,6 +108,28 @@ export const AssignmentsPage = () => {
 
         <Card className="mb-6">
           <CardBody>
+            <div className="flex items-center gap-3 flex-wrap mb-4">
+              <div className="min-w-[260px]">
+                <FormSelect
+                  label="Filter by course"
+                  name="courseFilter"
+                  value={filterCourseId}
+                  onChange={(e) => {
+                    const newCourseId = e.target.value || 'all';
+                    setFilterCourseId(newCourseId);
+                    if (newCourseId === 'all') {
+                      setSearchParams({});
+                    } else {
+                      setSearchParams({ courseId: newCourseId });
+                    }
+                  }}
+                  options={courseOptions}
+                />
+              </div>
+              <div className="text-sm text-secondary-600">
+                Showing <span className="font-semibold text-secondary-800">{sortedAssignments.length}</span> assignments
+              </div>
+            </div>
             <div className="flex gap-2 flex-wrap">
               <button
                 onClick={() => setFilterStatus('all')}

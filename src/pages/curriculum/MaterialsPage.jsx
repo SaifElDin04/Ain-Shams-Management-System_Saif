@@ -46,6 +46,12 @@ export const MaterialsPage = () => {
     return materials.filter((m) => String(m.courseId) === String(filterCourseId));
   }, [materials, filterCourseId]);
 
+  useEffect(() => {
+    if (courseIdFromUrl && courseIdFromUrl !== 'all') {
+      setFilterCourseId(courseIdFromUrl);
+    }
+  }, [courseIdFromUrl]);
+
   const canManage = userRole === 'staff' || userRole === 'admin';
 
   const handleUpload = (e) => {
@@ -95,7 +101,15 @@ export const MaterialsPage = () => {
                   label="Filter by course"
                   name="courseFilter"
                   value={filterCourseId}
-                  onChange={(e) => setFilterCourseId(e.target.value || 'all')}
+                  onChange={(e) => {
+                    const newCourseId = e.target.value || 'all';
+                    setFilterCourseId(newCourseId);
+                    if (newCourseId === 'all') {
+                      setSearchParams({});
+                    } else {
+                      setSearchParams({ courseId: newCourseId });
+                    }
+                  }}
                   options={courseOptions}
                 />
               </div>
