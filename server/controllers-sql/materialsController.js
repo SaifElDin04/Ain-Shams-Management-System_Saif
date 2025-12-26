@@ -2,22 +2,30 @@
 const db = require('../db/sql');
 const { validationResult } = require('express-validator');
 
-// Get user role from request headers
-const getRequestRole = (req) => req.headers['x-user-role'] || null;
+// Get user role from request (prefer req.user from middleware, fallback to headers)
+const getRequestRole = (req) => (req.user && req.user.role) || req.headers['x-user-role'] || null;
 
-// Get user ID from request headers
+// Get user ID from request (prefer req.user from middleware, fallback to headers)
 const getRequestUserId = (req) => {
+  if (req.user && req.user.id) {
+    return Number(req.user.id);
+  }
   const id = req.headers['x-user-id'];
   return id ? Number(id) : null;
 };
 
-// Get user name from request headers
-const getRequestUserName = (req) => req.headers['x-user-name'] || 'Unknown';
+// Get user name from request (prefer req.user from middleware, fallback to headers)
+const getRequestUserName = (req) => {
+  if (req.user && req.user.name) {
+    return req.user.name;
+  }
+  return req.headers['x-user-name'] || 'Unknown';
+};
 
-// Verify user has required role
+// Verify user has required role (role check is now handled by middleware, but keep for compatibility)
 const ensureRole = (req, ...allowedRoles) => {
   const role = getRequestRole(req);
-  if (!allowedRoles.includes(role)) {
+  if (!role || !allowedRoles.includes(role)) {
     const err = new Error('Forbidden');
     err.statusCode = 403;
     throw err;
@@ -41,8 +49,7 @@ const ensureEnrolled = async (req, courseId) => {
 //upload material POST /courses/:courseId/materials
 exports.uploadMaterial = async (req, res, next) => {
   try {
-    // only admin and staff can upload
-    ensureRole(req, 'admin', 'staff');
+    // Role check is handled by middleware in routes
 
     // Validate request body
     const errors = validationResult(req);
@@ -51,6 +58,11 @@ exports.uploadMaterial = async (req, res, next) => {
     }
 
     // Extract data from request
+    console.log('[uploadMaterial] Request:', {
+      params: req.params,
+      body: req.body,
+      user: req.user,
+    });
     const courseId = Number(req.params.courseId);
     const { title, type, fileUrl, fileSize, description } = req.body;
     const uploadedBy = getRequestUserName(req);
@@ -248,8 +260,7 @@ exports.downloadMaterial = async (req, res, next) => {
  */
 exports.updateMaterial = async (req, res, next) => {
   try {
-    // Step 1: Check authorization (admin or staff only)
-    ensureRole(req, 'admin', 'staff');
+    // Role check is handled by middleware in routes
 
     // Step 2: Validate request
     const errors = validationResult(req);
@@ -337,8 +348,7 @@ exports.updateMaterial = async (req, res, next) => {
  */
 exports.deleteMaterial = async (req, res, next) => {
   try {
-    // Step 1: Check authorization
-    ensureRole(req, 'admin', 'staff');
+    // Role check is handled by middleware in routes
 
     const courseId = Number(req.params.courseId);
     const materialId = Number(req.params.materialId);
