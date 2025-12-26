@@ -10,7 +10,8 @@ const router = express.Router();
 // Report maintenance issue (authenticated users)
 router.post('/maintenance', [
   authenticate,
-  body('classroomId').isInt(),
+  body('classroomId').optional().isInt(),
+  body('location').optional().isString().trim(),
   body('issueType').optional().isIn(['general', 'equipment', 'furniture', 'electrical', 'plumbing', 'heating', 'cleaning', 'safety', 'other']),
   body('title').isString().trim().notEmpty(),
   body('description').optional().isString().trim(),
@@ -32,7 +33,7 @@ router.patch('/maintenance/:issueId', [
   authorizeRole(['admin', 'staff']),
   param('issueId').isInt(),
   body('status').optional().isIn(['reported', 'in_progress', 'resolved', 'cancelled']),
-  body('assignedToUserId').optional().isInt().or().equals(null),
+  body('assignedToUserId').optional().custom((val) => val === null || Number.isInteger(Number(val))),
   body('resolutionNotes').optional().isString().trim(),
 ], validateRequest, maintenanceController.updateMaintenanceIssue);
 

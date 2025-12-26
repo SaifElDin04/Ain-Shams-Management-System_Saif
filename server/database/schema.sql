@@ -258,7 +258,8 @@ CREATE INDEX idx_room_bookings_time_range ON room_bookings(classroom_id, start_t
 -- TABLE: maintenance_issues (reports for room maintenance)
 CREATE TABLE maintenance_issues (
   id SERIAL PRIMARY KEY,
-  classroom_id INTEGER NOT NULL REFERENCES classrooms(id) ON DELETE CASCADE,
+  classroom_id INTEGER REFERENCES classrooms(id) ON DELETE CASCADE,
+  location VARCHAR(255),
   reported_by_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   issue_type VARCHAR(50) NOT NULL DEFAULT 'general' CHECK (issue_type IN ('general', 'equipment', 'furniture', 'electrical', 'plumbing', 'heating', 'cleaning', 'safety', 'other')),
   title VARCHAR(255) NOT NULL,
