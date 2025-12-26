@@ -201,6 +201,65 @@ CREATE TABLE parent_students (
 CREATE INDEX idx_parent_students_parent_id ON parent_students(parent_id);
 CREATE INDEX idx_parent_students_student_id ON parent_students(student_id);
 
+-- TABLE: quizzes
+CREATE TABLE quizzes (
+  id SERIAL PRIMARY KEY,
+  course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+  creator_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  title VARCHAR(255) NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  due_date TIMESTAMP,
+  time_limit_minutes INTEGER,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_quizzes_course_id ON quizzes(course_id);
+CREATE INDEX idx_quizzes_creator_id ON quizzes(creator_id);
+
+-- TABLE: quiz_questions
+CREATE TABLE quiz_questions (
+  id SERIAL PRIMARY KEY,
+  quiz_id INTEGER NOT NULL REFERENCES quizzes(id) ON DELETE CASCADE,
+  question_text TEXT NOT NULL,
+  question_type VARCHAR(50) NOT NULL CHECK (question_type IN ('mcq', 'short_answer')),
+  options JSONB NOT NULL DEFAULT '[]'::jsonb,
+  correct_answer TEXT NOT NULL DEFAULT '',
+  points INTEGER NOT NULL DEFAULT 1 CHECK (points > 0),
+  order_index INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_quiz_questions_quiz_id ON quiz_questions(quiz_id);
+
+-- TABLE: quiz_submissions
+CREATE TABLE quiz_submissions (
+  id SERIAL PRIMARY KEY,
+  quiz_id INTEGER NOT NULL REFERENCES quizzes(id) ON DELETE CASCADE,
+  student_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  score DECIMAL(5,2) NOT NULL DEFAULT 0,
+  submitted_at TIMESTAMP,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(quiz_id, student_id)
+);
+
+CREATE INDEX idx_quiz_submissions_quiz_id ON quiz_submissions(quiz_id);
+CREATE INDEX idx_quiz_submissions_student_id ON quiz_submissions(student_id);
+
+-- TABLE: quiz_answers
+CREATE TABLE quiz_answers (
+  id SERIAL PRIMARY KEY,
+  submission_id INTEGER NOT NULL REFERENCES quiz_submissions(id) ON DELETE CASCADE,
+  question_id INTEGER NOT NULL REFERENCES quiz_questions(id) ON DELETE CASCADE,
+  answer_text TEXT NOT NULL DEFAULT '',
+  is_correct BOOLEAN NOT NULL DEFAULT false,
+  points_awarded DECIMAL(5,2) NOT NULL DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_quiz_answers_submission_id ON quiz_answers(submission_id);
+CREATE INDEX idx_quiz_answers_question_id ON quiz_answers(question_id);
+
 -- TABLE: tags
 CREATE TABLE tags (
   id SERIAL PRIMARY KEY,
