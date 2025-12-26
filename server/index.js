@@ -13,6 +13,7 @@ const authRoutes = require('./routes/authRoutes');
 const courseRoutes = require('./routes/courseRoutes');
 const classroomRoutes = require('./routes/classroomRoutes');
 const applicationRoutes = require('./routes/applicationRoutes');
+const maintenanceRoutes = require('./routes/maintenanceRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
 
 const PORT = process.env.PORT || 4000;
@@ -40,6 +41,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/curriculum', courseRoutes);
 app.use('/api/classrooms', classroomRoutes);
 app.use('/api/applications', applicationRoutes);
+app.use('/api', maintenanceRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.get('/', (req, res) => res.send('API running'));
 
