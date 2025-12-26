@@ -17,12 +17,9 @@ import { SignupPage } from './pages/auth/SignupPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { CoursesPage } from './pages/curriculum/CoursesPage';
 import { CourseDetailPage } from './pages/curriculum/CourseDetailPage';
-import { AssignmentsPage } from './pages/curriculum/AssignmentsPage';
 import { AssignmentDetailPage } from './pages/curriculum/AssignmentDetailPage';
-import { StaffAssignmentsPage } from './pages/curriculum/StaffAssignmentsPage';
 import { GradesPage } from './pages/curriculum/GradesPage';
 import { StaffGradesPage } from './pages/curriculum/StaffGradesPage';
-import { MaterialsPage } from './pages/curriculum/MaterialsPage';
 
 import { AdmissionPage } from './pages/admission/AdmissionPage';
 
@@ -83,15 +80,6 @@ function App() {
                       element={
                         <ProtectedRoute>
                           <CourseDetailPage />
-                        </ProtectedRoute>
-                      }
-                    />
-
-                    <Route
-                      path="/assignments"
-                      element={
-                        <ProtectedRoute>
-                          <AssignmentsPage />
                         </ProtectedRoute>
                       }
                     />
@@ -162,24 +150,6 @@ function App() {
                       element={
                         <ProtectedRoute roles={['staff']}>
                           <CoursesPage />
-                        </ProtectedRoute>
-                      }
-                    />
-
-                    <Route
-                      path="/staff/assignments"
-                      element={
-                        <ProtectedRoute roles={['staff']}>
-                          <StaffAssignmentsPage />
-                        </ProtectedRoute>
-                      }
-                    />
-
-                    <Route
-                      path="/staff/materials"
-                      element={
-                        <ProtectedRoute roles={['staff']}>
-                          <MaterialsPage />
                         </ProtectedRoute>
                       }
                     />
